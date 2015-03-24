@@ -87,7 +87,9 @@ def writeOneSummary(outputFilename, f, allPaths):
 			"open", "conscientious", \
 			"text"]
 	path = outputFilename.strip().split("/")
+	outputFilename = path[-1]
 	path = '/'.join(path[0:-1])
+	print "Output filename: ",outputFilename
 
 	tsv_writer(data, outputFilename)
 	gender = {'M': 0, 'F':1}
@@ -121,28 +123,46 @@ def writeOneSummary(outputFilename, f, allPaths):
 			e = sys.exc_info()[0]
 			print "Filename: %s Error: %s" % (fileName, e)
 		else:
+# 			print "In Else"
 			allDocs = tree.getroot().findall("document")
  			allText = ""
-
+			
+# 			print "Going in for loop"
 			for doc in allDocs:
 				clean = bleach.clean(doc.text, tags=[], strip=True)
  				allText = allText + clean
-	 			allText = allText.encode('utf-8')
-				clean = clean.encode('utf-8')								
-			data = [fileName, thisGender, thisAgeGroup, thisExtroverted, thisStable, thisAgreeable, thisOpen, thisConscientious, clean]
+	 		
+			# 	clean = clean.encode('utf-8')
+			allText = allText.encode('utf-8')
+# 			print "Out of loop, writing"								
+			data = [fileName, thisGender, thisAgeGroup, thisExtroverted, \
+					thisStable, thisAgreeable, thisOpen, thisConscientious, \
+					allText]
 			tsv_writer(data, outputFilename)
+			print "Finish writing one line"
 
 	
 	   
 def main(argv):
+# 	print "Getting relevant directories"
 	inputDir, outputDir = getRelevantDirectories(argv)
+# 	print "Getting all filenames with absolute paths"
 	allPaths = getAllFilenamesWithAbsPath(inputDir)
+# 	print "Getting all truth files"
 	allTruthText = getTruthTextFiles(allPaths)
 	models = {}
 	tasks = ["gender", "age", "extroverted", "stable", "agreeable", "open", "conscientious"]
+	langs = ["english", "dutch", "spanish", "italian"]
+# 	allTruthText = [a for a in allTruthText if "english" in a]
+# 	import pdb; pdb.set_trace()
 	for f in allTruthText:
 		a = f.strip().split("/")
-		outputFilename = '/'.join(a[0:-1]) + '/summary-' + a[-1]
+		lang = [ lang for lang in langs if lang in f]
+		print "Processing: ", lang[0]
+# 		import pdb; pdb.set_trace()
+		outputFilename = '/'.join(a[0:-1]) + '/summary-' + lang[0] + '-' + a[-1]
+		print "Output filename: ", outputFilename
+		print "Writing one summary"
 		writeOneSummary(outputFilename, f, allPaths)
 # 		descriptors = getDescriptorsForOne(outputFilename)
 # 		model_for_one = {}
