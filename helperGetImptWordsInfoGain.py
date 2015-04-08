@@ -66,7 +66,8 @@ def get_n_important_features(n, feature_names):
 		c = feature_names[b]
 # 		import pdb; pdb.set_trace()
 		d = min(feature_importances)
-		important_feature_list.append(c)
+		array_name = "x["+ str(b) + "]="+ c
+		important_feature_list.append(array_name)
 		feature_importances[b]=d	
 	return important_feature_list
 	

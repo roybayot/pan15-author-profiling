@@ -86,7 +86,7 @@ for line in clean_train_reviews:
 	train_reviews_pos_tags.append(pos_line)
 
 
-bigram_vectorizer = CountVectorizer(ngram_range=(1, 2), \
+bigram_vectorizer = CountVectorizer(ngram_range=(1, 1), \
 									min_df=1)
 									
 train_X = bigram_vectorizer.fit_transform(train_reviews_pos_tags).toarray()

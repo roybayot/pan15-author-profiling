@@ -102,6 +102,12 @@ print "mean: ", scores.mean()
 print scores
 print "#"*80
 
+# predicted = cross_validation.cross_val_predict(clf, train_X, train_y, cv=n_folds)
+# print "Predicted:"
+# print predicted
+
+print "#"*80
+
 clf = LinearSVC(loss='l2', penalty='l2', dual=False, tol=1e-3)   
 scores = cross_validation.cross_val_score( clf, train_X, train_y, cv=n_folds)
 print "LinearSVC(loss='l2', penalty='l2', dual=False, tol=1e-3) scores:"
