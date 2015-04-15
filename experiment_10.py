@@ -1,7 +1,7 @@
 #!/usr/bin/python
 
 """
-Experiment 05: Gender classification of English tweets based on ngrams of POS tags.
+Experiment 10: Age classification of English tweets based on ngrams of POS tags.
 - one line, all tweets
 - cleaning
 - classifier: SVC - linear, C=1
@@ -90,11 +90,11 @@ bigram_vectorizer = CountVectorizer(ngram_range=(1, 3), \
 									min_df=1)
 									
 train_X = bigram_vectorizer.fit_transform(train_reviews_pos_tags).toarray()
-train_y = train["gender"]
+train_y = train["age"]
 print "Shape: ", train_X.shape
 
 print "cross validation"
-# clf = svm.SVC(kernel='linear', C=1).fit(train_X, train_y)
+
 print "#"*80
 clf = svm.SVC(kernel='linear', C=1)
 scores = cross_validation.cross_val_score( clf, train_X, train_y, cv=n_folds)

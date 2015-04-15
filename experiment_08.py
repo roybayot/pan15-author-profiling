@@ -1,9 +1,9 @@
 #!/usr/bin/python
 
 """
-Experiment 05: Gender classification of English tweets based on ngrams of POS tags.
+Experiment 08: Age classification of English tweets stylistic features.
 - one line, all tweets
-- cleaning
+- no cleaning
 - classifier: SVC - linear, C=1
 			  LinearSVC - loss='l2', penalty='l2', dual=False, tol=1e-3
 """
@@ -27,12 +27,24 @@ from sklearn import metrics
 from bs4 import BeautifulSoup
 from nltk.corpus import stopwords
 
-from treetagger import TreeTagger
+
 # SETTINGS:
 n_words = 10000
 n_folds = 10
-tt = TreeTagger(encoding='latin-1',language='english')
 
+test_patterns = [ "#",
+				  "@username",
+				  "http://",
+				  ":)",
+				  ";)",
+				  "o_O",
+				  "!",
+				  "!!",
+				  "!!!",
+				  ":("
+				  ]
+def getCount(onePattern, inputString):
+	return inputString.count(onePattern)
 		
 def review_to_words(raw_review):
     # Function to convert a raw review to a string of words
@@ -78,23 +90,20 @@ for i in xrange( 0, num_text):
    # clean reviews
    clean_train_reviews.append( review_to_words( train["text"][i] ) )
 
-train_reviews_pos_tags = []
-for line in clean_train_reviews:
-	a = tt.tag(line)
-	a = [col[1] for col in a]
-	pos_line = " ".join(a)
-	train_reviews_pos_tags.append(pos_line)
+print "Counting occurrences of stylistic features."
 
+train_X = []
+for line in train_reviews:
+	vector_for_one_entry = []
+	for pattern in test_patterns:
+		x = getCount(pattern, line)
+		vector_for_one_entry.append(x)
+	train_X.append(vector_for_one_entry)
 
-bigram_vectorizer = CountVectorizer(ngram_range=(1, 3), \
-									min_df=1)
-									
-train_X = bigram_vectorizer.fit_transform(train_reviews_pos_tags).toarray()
-train_y = train["gender"]
-print "Shape: ", train_X.shape
-
+train_X = np.array(train_X)
+train_y = train["age"]
+					   
 print "cross validation"
-# clf = svm.SVC(kernel='linear', C=1).fit(train_X, train_y)
 print "#"*80
 clf = svm.SVC(kernel='linear', C=1)
 scores = cross_validation.cross_val_score( clf, train_X, train_y, cv=n_folds)
