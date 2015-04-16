@@ -160,7 +160,7 @@ def getFeatureVecFromPOS(oneLine, lang, n_gram_range, ngram_vec):
 	train_reviews_pos_tags = tt.tag(clean_train_reviews)
 	a = [col[1] for col in train_reviews_pos_tags]
 	pos_line = " ".join(a)
-	X = ngram_vec.transform(train_reviews_pos_tags).toarray()
+	X = ngram_vec.transform(pos_line).toarray()
 	return X
 
 	
