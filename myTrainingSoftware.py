@@ -811,9 +811,9 @@ def	getFeatureVecFromPOS(fileName, lang, n_gram_range):
 		pos_line = " ".join(a)
 		train_reviews_pos_tags.append(pos_line)
 
-	bigram_vectorizer = CountVectorizer(ngram_range=n_gram_range, min_df=1)
-	X = bigram_vectorizer.fit_transform(train_reviews_pos_tags).toarray()
-	return X
+	ngram_vectorizer = CountVectorizer(ngram_range=n_gram_range, min_df=1)
+	X = ngram_vectorizer.fit_transform(train_reviews_pos_tags).toarray()
+	return X, ngram_vectorizer
 
 
 def getDescriptorsForOne(outputFilename, lang, task):
@@ -1005,12 +1005,14 @@ def main(argv):
 	models = []
 
 	for lang, outputFilename in zip(tempLangs, summaryFiles):
-		X1, vec = getFeatureVecFromTFIDF(outputFilename, lang)
-		X2      = getFeatureVecFromStylisticFeatures(outputFilename, stylistic_features)
-		X3      = getFeatureVecFromPOS(outputFilename, lang, (1,1))
-		X4      = getFeatureVecFromPOS(outputFilename, lang, (1,2))
+		X1, vec			= getFeatureVecFromTFIDF(outputFilename, lang)
+		X2      	  	= getFeatureVecFromStylisticFeatures(outputFilename, stylistic_features)
+		X3, uni_vec   	= getFeatureVecFromPOS(outputFilename, lang, (1,1))
+		X4, bi_vec    	= getFeatureVecFromPOS(outputFilename, lang, (1,2))
 		
 		models.append({'tfidf_vectorizer': {lang : vec}})
+		models.append({'unigram_vectorizer':{lang: uni_vec}})
+		models.append({'bigram_vectorizer':{lang: bi_vec}})
 		
 		for task in tasks:
 			X5 = getFeatureVecFromFunctionWords(outputFilename, function_words_dict[lang][task])

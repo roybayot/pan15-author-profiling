@@ -152,19 +152,15 @@ def getFeatureVecFromStylisticFeatures(oneLine, stylistic_features):
 	return getFeatureVecFromFunctionWords(oneLine, stylistic_features)
 
 
-def getFeatureVecFromPOS(oneLine, lang, n_gram_range):
+def getFeatureVecFromPOS(oneLine, lang, n_gram_range, ngram_vec):
 	clean_train_reviews = review_to_words( oneLine, lang )
 	tt = TreeTagger(encoding='latin-1',language=lang)
 	train_reviews_pos_tags = []
 	
-	for line in clean_train_reviews:
-		a = tt.tag(line)
-		a = [col[1] for col in a]
-		pos_line = " ".join(a)
-		train_reviews_pos_tags.append(pos_line)
-
-	bigram_vectorizer = CountVectorizer(ngram_range=n_gram_range, min_df=1)
-	X = bigram_vectorizer.fit_transform(train_reviews_pos_tags).toarray()
+	train_reviews_pos_tags = tt.tag(clean_train_reviews)
+	a = [col[1] for col in train_reviews_pos_tags]
+	pos_line = " ".join(a)
+	X = ngram_vec.transform(train_reviews_pos_tags).toarray()
 	return X
 
 	
@@ -229,19 +225,25 @@ def classifyTestFiles(models, inputDir):
 			tempLang = 'spanish'
 		
 
-		for x in models:
-# 			import pdb; pdb.set_trace()
+		for x in models: 
 			if (x.keys()[0] == 'tfidf_vectorizer') and (x.values()[0].keys()[0] == tempLang):
  				vec = x.values()[0].values()[0]
-# 			if 'tfidf_vectorizer' in x.keys() and lang in x.values()[0].keys():
-# 				vec = x['tfidf_vectorizer'][lang]
+
+		for x in models: 
+			if (x.keys()[0] == 'unigram_vectorizer') and (x.values()[0].keys()[0] == tempLang):
+ 				uni_vec = x.values()[0].values()[0]
+
+		for x in models: 
+			if (x.keys()[0] == 'bigram_vectorizer') and (x.values()[0].keys()[0] == tempLang):
+ 				bi_vec = x.values()[0].values()[0]
+
 
 		oneLine = getTweetsToLine(oneFile)
 		oneLine = review_to_words(oneFile, tempLang)
 		X1 = vec.transform(oneLine)
 		X2 = getFeatureVecFromStylisticFeatures(oneLine, stylistic_features)
-		X3 = getFeatureVecFromPOS(oneLine, tempLang, (1,1))
-		X4 = getFeatureVecFromPOS(oneLine, tempLang, (1,2))
+		X3 = getFeatureVecFromPOS(oneLine, tempLang, (1,1), uni_vec)
+		X4 = getFeatureVecFromPOS(oneLine, tempLang, (1,2), bi_vec)
 		
 		
 		temp = {}
