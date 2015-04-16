@@ -7,6 +7,40 @@ from os import listdir
 from os.path import isfile, join
 import xml.etree.ElementTree as ET
 
+from myTrainingSoftware import getCount, review_to_words
+from myTrainingSoftware import function_words_dict, stylistic_features
+
+
+import bleach
+import os
+import re
+import csv
+import pickle
+
+
+import pandas as pd
+import numpy as np
+import re
+import timeit
+
+from nltk.corpus import stopwords
+
+from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.feature_extraction.text import CountVectorizer
+from sklearn.svm import LinearSVC
+
+from sklearn import cross_validation
+from sklearn import svm
+from sklearn import metrics
+from sklearn import preprocessing
+from bs4 import BeautifulSoup
+
+from treetagger import TreeTagger
+
+reload(sys)
+sys.setdefaultencoding("ISO-8859-1")
+
+
 def getRelevantDirectories(argv):
    inputDir = ''
    outputDir = ''
@@ -29,7 +63,11 @@ def getRelevantDirectories(argv):
    return inputDir, outputDir, modelDir
 
 def getAllModels(modelDir):
-	return None
+	filename = modelDir + "/models.pkl"
+	f = open(filename,'rb')
+	models = pickle.load(f)
+	f.close()
+	return models
 
 def dirExists(inputDir):
 	if os.path.exists(inputDir):
@@ -82,11 +120,58 @@ def getLanguage(oneFile):
 	root = tree.getroot()
 	a = root.attrib
 	return a['lang']
+
+def getTweetsToLine(oneFile):
+	allText = ""
+	try:
+		tree = ET.parse(fileName)
+ 		print "Filename: %s SUCCESS!" % oneFile
+	except:
+		e = sys.exc_info()[0]
+		print "Filename: %s Error: %s" % (oneFile, e)
+	else:
+		allDocs = tree.getroot().findall("document")		
+		for doc in allDocs:
+			clean = bleach.clean(doc.text, tags=[], strip=True)
+ 			allText = allText + clean
+	 	allText = allText.encode('utf-8')
+	return allText
+
+def getCount(onePattern, inputString):
+	return inputString.count(onePattern)
+	 	
+def getFeatureVecFromFunctionWords(oneLine, test_patterns):
+	vector_for_one_entry = []
+	for pattern in test_patterns:
+		count = getCount(pattern, oneLine)
+		vector_for_one_entry.append(count)
+	return np.array(vector_for_one_entry)
+
+
+def getFeatureVecFromStylisticFeatures(oneLine, stylistic_features):
+	return getFeatureVecFromFunctionWords(oneLine, stylistic_features)
+
+
+def getFeatureVecFromPOS(oneLine, lang, n_gram_range):
+	clean_train_reviews = review_to_words( oneLine, lang )
+	tt = TreeTagger(encoding='latin-1',language=lang)
+	train_reviews_pos_tags = []
+	
+	for line in clean_train_reviews:
+		a = tt.tag(line)
+		a = [col[1] for col in a]
+		pos_line = " ".join(a)
+		train_reviews_pos_tags.append(pos_line)
+
+	bigram_vectorizer = CountVectorizer(ngram_range=n_gram_range, min_df=1)
+	X = bigram_vectorizer.fit_transform(train_reviews_pos_tags).toarray()
+	return X
+
 	
 def classifyTestFiles(models, inputDir):
 	results = {}
-	
-	models = {'nl': { 'gender'		 : 'male', \
+	 
+	base_models = {'nl': { 'gender'		 : 'male', \
 					  'age'			 : 'XX-XX', \
 					  'extroverted'	 : '0.2', \
 					  'stable'		 : '0.4', \
@@ -122,54 +207,81 @@ def classifyTestFiles(models, inputDir):
 	allTestFiles = getAllFilenamesWithAbsPath(inputDir)
 	allTestFiles = getAllXmlFiles(allTestFiles)
 	
+	tasks = ["gender", "age", "extroverted", "stable", "agreeable", "open", "conscientious"]
+	
 	for oneFile in allTestFiles:
 		lang = getLanguage(oneFile)
-		model = models[lang]
 		aa = oneFile.strip().split("/")
 		aa = aa[-1].strip().split(".")
 		thisId					= aa[0]
 # 		print oneFile
 		thisType				= 'twitter'
 		thisLanguage			= lang
-		predictedGender 	 	= model['gender']
-		predictedAge    	 	= model['age']
-		predictedExtroverted 	= model['extroverted']
-		predictedStable 		= model['stable']
-		predictedAgreeable	  	= model['agreeable']
-		predictedOpen		  	= model['open']
-		predictedConscientious 	= model['conscientious']
+		
+		
+		if lang == 'en':
+			tempLang = 'english'
+		if lang == 'nl':
+			tempLang = 'dutch'
+		if lang == 'it':
+			tempLang = 'italian'
+		if lang == 'es':
+			tempLang = 'spanish'
+		
 
-		results[oneFile] =  [ thisId, \
-							  thisType, \
-							  thisLanguage, \
-							  predictedGender, \
-							  predictedAge, \
-							  predictedExtroverted, \
-							  predictedStable, \
-							  predictedAgreeable, \
-							  predictedOpen, \
-							  predictedConscientious
-							]
+		for x in models:
+# 			import pdb; pdb.set_trace()
+			if (x.keys()[0] == 'tfidf_vectorizer') and (x.values()[0].keys()[0] == tempLang):
+ 				vec = x.values()[0].values()[0]
+# 			if 'tfidf_vectorizer' in x.keys() and lang in x.values()[0].keys():
+# 				vec = x['tfidf_vectorizer'][lang]
 
+		oneLine = getTweetsToLine(oneFile)
+		oneLine = review_to_words(oneFile, tempLang)
+		X1 = vec.transform(oneLine)
+		X2 = getFeatureVecFromStylisticFeatures(oneLine, stylistic_features)
+		X3 = getFeatureVecFromPOS(oneLine, tempLang, (1,1))
+		X4 = getFeatureVecFromPOS(oneLine, tempLang, (1,2))
+		
+		
+		temp = {}
+		for task in tasks:
+			if (lang == 'nl') and (task == 'age'):
+				predictedAge = base_models['nl']['age']
+			elif (lang == 'it') and (task == 'age'):
+				predictedAge = base_models['it']['age']
+			else:
+				for model in models:
+					if (model.keys()[0] == lang) and (model.values()[0].keys()[0] == task):
+						
+						X5 = getFeatureVecFromFunctionWords(oneLine, function_words_dict[lang][task])
+						
+						descriptors = np.concatenate((X1,X2,X3,X4,X5), axis=1)
+
+						clf = model[lang][task]
+						
+						pred_value = clf.predict(descriptors)
+						temp[task] = pred_value
+		temp['thisId']       = thisId
+		temp['thisType']     = thisType
+		temp['thisLanguage'] = thisLanguage
+		results[oneFile] =  temp
 	return results
-
-# def writeOneResult(key, value, outputDir):
-# 	pass
 
 def writeOneResult(key, value, outputDir):
 	key = key.strip().split("/")
 	cwd = os.getcwd()
 	path = cwd + "/" + outputDir + "/" + key[-1]
-	thisId					= value[0]
-	thisType				= value[1]
-	thisLanguage			= value[2]
-	predictedGender 	 	= value[3]
-	predictedAge    	 	= value[4]
-	predictedExtroverted 	= value[5]
-	predictedStable 		= value[6]
-	predictedAgreeable	  	= value[7]
-	predictedOpen		  	= value[8]
-	predictedConscientious 	= value[9]
+	thisId					= value['thisId']
+	thisType				= value['thisType']
+	thisLanguage			= value['thisLanguage']
+	predictedGender 	 	= value['gender']
+	predictedAge    	 	= value['age']
+	predictedExtroverted 	= value['extroverted']
+	predictedStable 		= value['stable']
+	predictedAgreeable	  	= value['agreeable']
+	predictedOpen		  	= value['open']
+	predictedConscientious 	= value['conscientious']
 
 	
 	text_to_write = """<author id='%s'\n\ttype='%s'\n\tlang='%s'\n\tage_group='%s'\n\tgender='%s'\n\textroverted='%s'\n\tstable='%s'\n\tagreeable='%s'\n\tconscientious='%s'\n\topen='%s'\n/>"""% (thisId, thisType, thisLanguage, predictedAge, predictedGender, \
